@@ -3,7 +3,9 @@ const   express     = require('express')
         iplurl      = require('./routes/matchRoutes')
         PORT        = process.env.PORT | 8082
         IP          = '127.0.0.1'
+        cors        = require('cors')
 
+app.use(cors());
 app.use('/api/', iplurl);
 
 app.get('/', (req, res)=>{

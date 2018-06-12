@@ -3,8 +3,15 @@ const   mongoose    = require('mongoose');
         router      = express.Router();
         dbMethod    = require('../db_connection/connection')
 
-router.get('/year/:year', (req, res)=>{
-    dbMethod.getYear(req.params.year).then(teams=>{
+// Api endpoints
+router.get('/:year/:teamname', (req, res)=>{
+    dbMethod.getPlayers(Number(req.params.year), req.params.teamname).then(players=>{
+        res.status(200).send(players)
+    });
+});
+        
+router.get('/:year', (req, res)=>{
+    dbMethod.getTeams(req.params.year).then(teams=>{
         res.status(200).send(teams)
     });
 });
