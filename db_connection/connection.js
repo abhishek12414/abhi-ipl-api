@@ -6,49 +6,59 @@ const express = require('express'),
 mongoose.connect('mongodb://localhost:27017/ipl');
 mongoose.connection.on('open', () => {
     console.log("Connected with database");
+    getPlayerRuns(2009, 'Deccan Chargers', 'AC Gilchrist')
 });
 
 // match all season
 const getSeasons = () => {
     return new Promise((resolve, reject) => {
         matches.aggregate([
-            { $group: { _id: '$season' } },
-            { $project: { _id: 0, year: '$_id' } },
-            { $sort: { year: 1 } }
-        ], (err, result) => {
-            if (err) {
-                reject(err);
-            } else {
-                resolve(result.map(years => {
-                    return years.year;
-                }));
-            }
-        });
-    })
+            {
+                $group: {
+                    _id: '$season',
+                    count: { $sum: 1 }
+                }
+            }, {
+                $project: {
+                    _id: 0,
+                    year: '$_id',
+                    matches: '$count'
+                }
+            }, {
+                $sort: { year: 1 }
+            }]
+            , (err, result) => {
+                if (err) {
+                    reject(err);
+                } else {
+                    resolve(result);
+                }
+            });
+    });
 }
 
 const getTeams = (year) => {
     return new Promise((resolve, reject) => {
         matches.aggregate([
             { $match: { season: Number(year) } },
-            { $group: { _id: '$team1' } },
-            { $project: { _id: 0, team: '$_id' } },
-            { $sort: { team_name: 1 } }
+            { $group: { _id: '$winner', count: { $sum: 1 } } },
+            { $project: { _id: 0, team: '$_id', totalWon: '$count' } },
+            { $sort: { totalWon: -1 } }
         ], (err, result) => {
             if (err) {
                 reject(err);
             } else {
-                resolve(result.map(team => { return team.team }));
+                resolve(result);
             }
         });
     });
 }
 
-function getPlayers(year, teamname) {    
+const getPlayers = (year, teamName) => {
     return new Promise((resolve, reject) => {
         matches.aggregate([
-            { $match: { $and: [{ season: year }, { $or: [{ team1: teamname }, { team2: teamname }] }] } },
-            { $group: { _id: '$id' }  },
+            { $match: { $and: [{ season: year }, { $or: [{ team1: teamName }, { team2: teamName }] }] } },
+            { $group: { _id: '$id' } },
             { $sort: { _id: 1 } }
         ], (err, result) => {
             if (err) {
@@ -66,10 +76,10 @@ function getPlayers(year, teamname) {
                                 matchId: '$match_id',
                                 player: {
                                     $cond: [
-                                        { $eq: ['$batting_team', teamname] },
+                                        { $eq: ['$batting_team', teamName] },
                                         '$batsman', {
                                             $cond: [
-                                                { $eq: ['$bowling_team', teamname] },
+                                                { $eq: ['$bowling_team', teamName] },
                                                 '$bowler', ''
                                             ]
                                         }
@@ -108,8 +118,44 @@ function getPlayers(year, teamname) {
     })
 }
 
+getPlayerRuns = (year, teamName, playerName) => {
+    console.log(year, teamName, playerName);
+    matches.aggregate([
+        { $match: { $and: [{ season: year }, { $or: [{ team1: teamName }, { team2: teamName }] }] } },
+        { $group: { _id: '$id' } },
+        { $sort: { _id: 1 } }
+    ], (err, result) => {
+        if (err) {
+            reject(err);
+        } else {
+            // console.log(result);
+            deliveries.aggregate([
+                {
+                    $match: {
+                        $and: [
+                            {
+                                match_id: {
+                                    $gte: result[0]._id,
+                                    $lte: result[result.length - 1]._id
+                                }
+                            },
+                            {}
+                        ]
+                    }
+                }
+            ], (err, result) => {
+                if (err) {
+                    console.log(err)
+                } else {
+                    console.log(result)
+                }
+            })
+        }
+    });
+}
+
 module.exports = {
     getSeasons,
     getTeams,
-    getPlayers
+    getPlayers,
 }
