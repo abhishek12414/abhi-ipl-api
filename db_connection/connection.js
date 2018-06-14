@@ -6,7 +6,7 @@ const express = require('express'),
 mongoose.connect('mongodb://localhost:27017/ipl');
 mongoose.connection.on('open', () => {
     console.log("Connected with database");
-    getPlayerRuns(2009, 'Deccan Chargers', 'AC Gilchrist')
+    // getPlayerProfile(2009, 'Deccan Chargers', 'AC Gilchrist')
 });
 
 // match all season
@@ -118,39 +118,106 @@ const getPlayers = (year, teamName) => {
     })
 }
 
-getPlayerRuns = (year, teamName, playerName) => {
-    console.log(year, teamName, playerName);
-    matches.aggregate([
-        { $match: { $and: [{ season: year }, { $or: [{ team1: teamName }, { team2: teamName }] }] } },
-        { $group: { _id: '$id' } },
-        { $sort: { _id: 1 } }
-    ], (err, result) => {
-        if (err) {
-            reject(err);
-        } else {
-            // console.log(result);
-            deliveries.aggregate([
-                {
-                    $match: {
-                        $and: [
-                            {
-                                match_id: {
-                                    $gte: result[0]._id,
-                                    $lte: result[result.length - 1]._id
+getPlayerProfile = (year, teamName, playerName) => {
+    return new Promise((resolve, reject) => {
+        matches.aggregate([
+            { $match: { $and: [{ season: year }, { $or: [{ team1: teamName }, { team2: teamName }] }] } },
+            { $group: { _id: '$id' } },
+            { $sort: { _id: 1 } }
+        ], (err, result) => {
+            if (err) {
+                reject(err);
+            } else {
+                // console.log(result);
+                deliveries.aggregate([
+                    {
+                        $match: {
+                            $and: [
+                                {
+                                    match_id: {
+                                        $gte: result[0]._id,
+                                        $lte: result[result.length - 1]._id
+                                    },
+                                    batsman: playerName
+                                },
+
+                            ]
+                        }
+                    }, {
+                        $group: {
+                            _id: '$batsman',
+                            runs: { $sum: '$batsman_runs' },
+                            six: {
+                                $sum: {
+                                    $cond: [
+                                        { $eq: ['$batsman_runs', 6] },
+                                        1, 0
+                                    ]
                                 }
                             },
-                            {}
-                        ]
+                            four: {
+                                $sum: {
+                                    $cond: [
+                                        { $eq: ['$batsman_runs', 4] },
+                                        1, 0
+                                    ]
+                                }
+                            },
+                            dismiss: {
+                                $sum: {
+                                    $cond: [
+                                        { $eq: ['$player_dismissed', playerName] },
+                                        1, 0
+                                    ]
+                                }
+                            },
+                            caught: {
+                                $sum: {
+                                    $cond: [
+                                        { $eq: ['$dismissal_kind', 'caught'] },
+                                        1, 0
+                                    ]
+                                }
+                            },
+                            bowled: {
+                                $sum: {
+                                    $cond: [
+                                        { $eq: ['$dismissal_kind', 'bowled'] },
+                                        1, 0
+                                    ]
+                                }
+                            },
+                            runout: {
+                                $sum: {
+                                    $cond: [
+                                        { $eq: ['$dismissal_kind', 'run out'] },
+                                        1, 0
+                                    ]
+                                }
+                            },
+                        }
+                    }, {
+                        $project: {
+                            _id: 0,
+                            name: '$_id',
+                            bowled: '$bowled',
+                            caught: '$caught',
+                            dismiss: '$dismiss',
+                            four: '$four',
+                            runout: '$runout',
+                            runs: '$runs',
+                            six: '$six'
+                        }
                     }
-                }
-            ], (err, result) => {
-                if (err) {
-                    console.log(err)
-                } else {
-                    console.log(result)
-                }
-            })
-        }
+                ], (err, result) => {
+                    if (err) {
+                        reject(err)
+                    } else {
+                        resolve(result[0]);
+                    }
+                })
+            }
+        });
     });
 }
 
@@ -158,4 +225,5 @@ module.exports = {
     getSeasons,
     getTeams,
     getPlayers,
+    getPlayerProfile
 }

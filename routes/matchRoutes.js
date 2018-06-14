@@ -4,6 +4,17 @@ const   mongoose    = require('mongoose');
         dbMethod    = require('../db_connection/connection')
 
 // Api endpoints
+router.get('/:year/:teamname/:playername', (req, res)=>{
+    if(req.params.playername === null)
+        res.send(404).send('Invalid Request');
+    dbMethod.getPlayerProfile(Number(req.params.year), req.params.teamname, req.params.playername).then(playersProfile=>{
+        if(playersProfile != null)
+            res.status(200).send(playersProfile);
+        else
+            res.status(404).send('Record not found');
+    });
+});
+
 router.get('/:year/:teamname', (req, res)=>{
     if(req.params.year == null || req.params.teamname == null)
         res.send(404).send('Invalid Request');
@@ -34,14 +45,5 @@ router.get('/', (req, res)=>{
             res.status(404).send('Record not found')
     })    
 })
-
-
-// router.get('/:year/:teamname', (req, res)=>{
-//     console.log('year', req.params.year)
-//     dbMethod.getTeam(req.params.year, req.params.teamname).then(teams=>{
-//         console.log(x)
-//         res.status(200).send('asdf')
-//     })    
-// })
 
 module.exports = router;
