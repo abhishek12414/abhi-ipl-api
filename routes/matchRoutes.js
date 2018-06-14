@@ -6,18 +6,18 @@ const   mongoose    = require('mongoose');
 // Api endpoints
 router.get('/:year/:teamname/:playername', (req, res)=>{
     if(req.params.playername === null)
-        res.send(404).send('Invalid Request');
+        res.send(400).send('Invalid Request');
     dbMethod.getPlayerProfile(Number(req.params.year), req.params.teamname, req.params.playername).then(playersProfile=>{
         if(playersProfile != null)
             res.status(200).send(playersProfile);
         else
-            res.status(404).send('Record not found');
+            res.status(404).send({msg: 'Record not found'});
     });
 });
 
 router.get('/:year/:teamname', (req, res)=>{
     if(req.params.year == null || req.params.teamname == null)
-        res.send(404).send('Invalid Request');
+        res.send(400).send('Invalid Request');
     dbMethod.getPlayers(Number(req.params.year), req.params.teamname).then(players=>{
         if(players != null)
             res.status(200).send(players);

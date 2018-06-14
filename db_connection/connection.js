@@ -106,7 +106,7 @@ const getPlayers = (year, teamName) => {
                     if (err)
                         reject(err);
                     else {
-                        let names = result.map((acc, nameObj) => {
+                        let names = result.map((acc) => {
                             return acc.name;
                         })
                         names = names.filter(name => name != '');
